@@ -11,6 +11,7 @@ devel: build volumes
         -v "${HOME}/.zshrc:/root/.zshrc:ro" \
         -v "${HOME}/.zshenv:/root/.zshenv:ro" \
         -v "${HOME}/.p10k.zsh:/root/.p10k.zsh:ro" \
+        -v "${HOME}/.cargo/credentials.toml:/root/.cargo/credentials.toml:ro" \
         --privileged \
         --entrypoint nvim \
         libuio-devel:latest /opt/libuio
