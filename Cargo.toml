@@ -2,6 +2,11 @@
 name = "libuio"
 version = "0.1.0"
 edition = "2021"
+authors = ["Christian Saide"]
+description = "A io_uring based async framework designed for high performance networking on linux."
+license = "Apache-2.0"
+repository = "https://github.com/uio-rs/libuio"
+exclude = ["/dist", "Makefile"]
 
 [dependencies]
 crossbeam-utils = { version = "~0.8" }
