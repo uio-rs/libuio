@@ -110,7 +110,7 @@ impl ThreadPool {
     ///
     /// ```
     /// # {
-    /// use nrpc::executor::ThreadPool;
+    /// use libuio::executor::ThreadPool;
     ///
     /// let pool = ThreadPool::new().unwrap();
     ///
