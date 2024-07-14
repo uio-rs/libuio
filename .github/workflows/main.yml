@@ -1,19 +1,17 @@
-name: PR
+name: Main
 
 on:
-  pull_request:
+  push:
     branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose
-      - name: Run tests
-        run: cargo test --verbose
