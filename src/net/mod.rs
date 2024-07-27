@@ -15,10 +15,12 @@
 //! [tokio::net]: https://docs.rs/tokio/latest/tokio/net/index.html
 
 mod addr;
+mod futures;
 mod listener;
 mod socket;
 mod stream;
 
-pub(crate) use addr::SocketAddrC;
+pub(crate) use addr::{getpeername, getsockname, SocketAddrC};
+pub use futures::*;
 pub use listener::TcpListener;
 pub use stream::TcpStream;

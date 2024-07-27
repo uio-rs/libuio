@@ -178,7 +178,7 @@ impl PoolState {
         }
         loop {
             // Grab our thread local io_uring and run it.
-            context::io().run().expect("Failed to run I/O loop.");
+            context::uring().run().expect("Failed to run I/O loop.");
 
             // Now handle any outstanding tasks, breaking out of the loop if we are in graceful
             // shutdown mode or we had a fatal error.

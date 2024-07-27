@@ -75,5 +75,7 @@
 
 pub mod context;
 pub mod executor;
+pub mod io_uring;
 pub mod net;
-pub mod uring;
+pub mod sync;
+pub(crate) mod util;

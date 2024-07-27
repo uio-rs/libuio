@@ -1,18 +1,10 @@
 use std::{
     io,
-    marker::PhantomData,
     net::SocketAddr,
-    os::fd::{AsRawFd, OwnedFd},
-    pin::Pin,
-    sync::mpsc::{Receiver, TryRecvError},
-    task::{Context, Poll},
+    os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use futures::{Future, Stream};
-
-use crate::{context, uring};
-
-use super::{socket, TcpStream};
+use super::{socket, Accept, Incoming};
 
 const DEFAULT_OUSTANDING: i32 = 1024;
 
@@ -69,20 +61,20 @@ impl TcpListener {
         outstanding: i32,
     ) -> io::Result<TcpListener> {
         let addr = format!("{}:{}", host.as_ref(), port).parse().unwrap();
-        let fd = socket::listener_socket(addr, outstanding)?;
+        let (fd, addr) = socket::listener_socket(addr, outstanding)?;
 
         Ok(TcpListener { addr, fd })
     }
 
     /// Return the address this listener is bound to.
-    pub fn address(&self) -> &SocketAddr {
-        &self.addr
+    pub fn addr(&self) -> SocketAddr {
+        self.addr
     }
 
     /// Accept a single connection asynchronously, this will return an [Accept] future that when
     /// polled to completion will either return a valid [TcpStream] that is ready to use or an
     /// [std::io::Error] describing any errors that might have occured.
-    pub fn accept(&mut self) -> Accept {
+    pub fn accept(&mut self) -> Accept<'_, TcpListener> {
         Accept::new(self)
     }
 
@@ -92,97 +84,13 @@ impl TcpListener {
     ///
     /// Note that its best to call this outside of a loop body or conditional, as the future is
     /// meant to be reused.
-    pub fn incoming(&mut self) -> Incoming<'_> {
+    pub fn incoming(&mut self) -> Incoming<'_, TcpListener> {
         Incoming::new(self)
     }
 }
 
-/// This represents a single use future for accepting an active conntion from a live [TcpListener].
-/// When polled to completion the future will return a valid [TcpStream], or any [std::io::Error]
-/// encountered while awaiting the new connection.
-pub struct Accept<'a> {
-    inner: PhantomData<&'a mut TcpListener>,
-    id: usize,
-    result: uring::AsyncResult<uring::Result<OwnedFd>>,
-}
-
-impl<'a> Drop for Accept<'a> {
-    fn drop(&mut self) {
-        context::io().deregister(self.id);
-    }
-}
-
-impl<'a> Accept<'a> {
-    pub fn new(listener: &'a mut TcpListener) -> Accept<'a> {
-        let (result, id) = context::io().register_accept(listener.fd.as_raw_fd());
-
-        Accept {
-            inner: PhantomData,
-            id,
-            result,
-        }
-    }
-
-    fn set_waker(&mut self, cx: &mut Context<'_>) {
-        context::io().set_waker(self.id, cx.waker().clone());
-    }
-}
-
-impl<'a> Future for Accept<'a> {
-    type Output = uring::Result<TcpStream>;
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.set_waker(cx);
-        match self.result.take() {
-            Some(result) => Poll::Ready(result.map(TcpStream::from)),
-            None => Poll::Pending,
-        }
-    }
-}
-
-/// This represents a stream future of incoming [TcpStream] connections. This will continue to
-/// return connections until either the future is dropped, or there is an unrecoverable error
-/// enountered.
-///
-/// Note this future is meant to be reused, so ensure that when in use that its lifetime extends
-/// beyond any loops in use.
-pub struct Incoming<'a> {
-    inner: PhantomData<&'a mut TcpListener>,
-    id: usize,
-    stream: Receiver<uring::Result<OwnedFd>>,
-}
-
-impl<'a> Drop for Incoming<'a> {
-    fn drop(&mut self) {
-        context::io().deregister(self.id);
-    }
-}
-
-impl<'a> Incoming<'a> {
-    fn new(listener: &'a mut TcpListener) -> Incoming<'a> {
-        let (stream, id) = context::io().register_incoming(listener.fd.as_raw_fd());
-        Incoming {
-            inner: PhantomData,
-            id,
-            stream,
-        }
-    }
-
-    fn set_waker(&mut self, cx: &mut Context<'_>) {
-        context::io().set_waker(self.id, cx.waker().clone());
-    }
-}
-
-impl<'a> Stream for Incoming<'a> {
-    type Item = uring::Result<TcpStream>;
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.set_waker(cx);
-        match self.stream.try_recv().map(Some) {
-            Ok(val) => match val {
-                Some(val) => Poll::Ready(Some(val.map(TcpStream::from))),
-                None => Poll::Ready(None),
-            },
-            Err(TryRecvError::Empty) => Poll::Pending,
-            Err(_) => panic!("Fuck me something went horribly wrong."),
-        }
+impl AsRawFd for TcpListener {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd.as_raw_fd()
     }
 }

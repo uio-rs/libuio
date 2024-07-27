@@ -15,13 +15,18 @@ fn main() {
             .await
             .expect("Failed to connect to remote server.");
 
+        println!(
+            "Connected to remote server, local address: {}",
+            client.addr()
+        );
+
         client
             .send("Hello from client!".as_bytes())
             .await
             .expect("Failed to send data to remote server");
 
         let mut buf = vec![0u8; 1024];
-        let (read, _) = client
+        let read = client
             .recv(buf.as_mut_slice())
             .await
             .expect("Failed to read data from remote server.");

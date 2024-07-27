@@ -19,7 +19,7 @@ fn main() {
 
         let mut buf = vec![0u8; 1024];
 
-        println!("Setting up stream of incoming connections");
+        println!("Listening on: {}", listener.addr());
 
         // Or we can grab a async stream of incoming connections, this is using the
         // opcode::AcceptMulti, which is a highly efficient implementation of the standard accept
@@ -37,15 +37,16 @@ fn main() {
                     continue;
                 }
             };
-            let (read, more) = match conn.recv(buf.as_mut_slice()).await {
+
+            println!("Got connection from: {}", conn.addr());
+
+            let read = match conn.recv(buf.as_mut_slice()).await {
                 Ok(ret) => ret,
                 Err(e) => {
                     println!("Failed to receive from client: {}", e);
                     continue;
                 }
             };
-
-            assert!(!more);
 
             let s = String::from_utf8_lossy(&buf[..read]);
 

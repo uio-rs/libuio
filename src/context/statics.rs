@@ -2,7 +2,7 @@ use std::sync::MutexGuard;
 
 use lazy_static::lazy_static;
 
-use crate::uring::Uring;
+use crate::io_uring::UringDriver;
 
 use super::Handle;
 
@@ -17,8 +17,8 @@ pub fn handle() -> &'static Handle {
     &HANDLE
 }
 
-/// Return a copy of the thread local [Uring], this is retrieved from the global [Handle] object
+/// Return a copy of the thread local [UringDriver], this is retrieved from the global [Handle] object
 /// and is the means for injecting the IO handling into the various [crate::net] implementations.
-pub fn io<'a>() -> MutexGuard<'a, Uring> {
-    handle().io()
+pub fn uring<'a>() -> MutexGuard<'a, UringDriver> {
+    handle().uring()
 }

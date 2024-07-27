@@ -12,4 +12,4 @@ mod handle;
 mod statics;
 
 pub use handle::Handle;
-pub use statics::{handle, io};
+pub use statics::{handle, uring};
