@@ -126,7 +126,7 @@ impl UringDriver {
                 Rearm => {
                     // We have a multi-shot requesting that we re-arm it, so lets go ahead and do
                     // that so that we continue to get new updates.
-                    let entry = state.as_entry();
+                    let entry = state.as_entry().user_data(user_data as u64);
                     unsafe {
                         if sq.push(&entry).is_err() {
                             self.backlog.push_back(entry);
