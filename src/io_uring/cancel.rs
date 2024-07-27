@@ -2,11 +2,15 @@ use io_uring::{opcode, types::CancelBuilder};
 
 use super::{Completion, CompletionStatus};
 
+/// A cancel event operation, that will target a given state index. This is a best effort operation
+/// which will attempt to cancel any and all operations associated with the given index. Generally
+/// this is used during a drop of a given Future or Completion event inegrated with the uring loop.
 pub struct Cancel {
     index: usize,
 }
 
 impl Cancel {
+    /// Create a new [Cancel] event targeting the given state index.
     pub fn new(index: usize) -> Cancel {
         Cancel { index }
     }
