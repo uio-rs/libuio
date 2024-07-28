@@ -4,7 +4,9 @@ use std::{
     os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use super::{socket, Connect, RecvFrom, RecvMsg, SendMsg, SendTo};
+use super::{
+    getpeername, getsockname, socket, Connect, Recv, RecvFrom, RecvMsg, Send, SendMsg, SendTo,
+};
 
 /// A [UdpSocket] represents a bi-directional UDP socket that can read and write data to any remote
 /// host listening for datagram messages. It is also possible to [UdpSocket::connect] to a remote
@@ -12,7 +14,6 @@ use super::{socket, Connect, RecvFrom, RecvMsg, SendMsg, SendTo};
 /// [UdpSocket::send_msg] calls.
 pub struct UdpSocket {
     fd: OwnedFd,
-    addr: SocketAddr,
 }
 
 impl UdpSocket {
@@ -22,18 +23,50 @@ impl UdpSocket {
             .parse()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
 
-        let (fd, addr) = socket::udp_socket(addr)?;
-        Ok(UdpSocket { fd, addr })
+        let fd = socket::udp_socket(addr)?;
+        Ok(UdpSocket { fd })
     }
 
-    /// Retrieve this sockets local [SocketAddr].
-    pub fn addr(&self) -> SocketAddr {
-        self.addr
+    /// Retrieve this sockets local [SocketAddr], or panics if there is either no local address or
+    /// some other [std::io::Error] is encountered.
+    ///
+    /// For a safe alternative use [UdpSocket::try_local_addr].
+    pub fn local_addr(&self) -> SocketAddr {
+        self.try_local_addr().unwrap()
+    }
+
+    /// Retrieve this sockets local [SocketAddr] or returns an error if there is either no local
+    /// address for this socket or some other [std::io::Error] is encountered.
+    pub fn try_local_addr(&self) -> io::Result<SocketAddr> {
+        getsockname(self.fd.as_raw_fd())
+    }
+
+    /// Retrieve the peer [SocketAddr] for connected socket which have successfully called
+    /// [UdpSocket::connect]. or panics an error if there is either no peer address or some other
+    /// [std::io::Error] is encountered.
+    ///
+    /// For a safe alternative use [UdpSocket::try_peer_addr].
+    pub fn peer_addr(&self) -> SocketAddr {
+        self.try_peer_addr().unwrap()
+    }
+
+    /// Retrieve the peer [SocketAddr] for connected socket which have successfully called
+    /// [UdpSocket::connect]. or returns an error if there is either no peer address or some other
+    /// [std::io::Error] is encountered.
+    pub fn try_peer_addr(&self) -> io::Result<SocketAddr> {
+        getpeername(self.fd.as_raw_fd())
     }
 
     /// Connect to the specified remote host.
-    pub fn connect(&mut self, _remote: &SocketAddr) -> Connect {
-        unimplemented!()
+    pub fn connect<'a>(&'a mut self, remote: &SocketAddr) -> Connect<'a, UdpSocket> {
+        Connect::new(self, remote)
+    }
+
+    /// Read data from the socket into the specified buffer, returning the number of bytes read.
+    /// Note that this method requires that [UdpSocket::connect] be called successfuly to set the
+    /// remote address.
+    pub fn recv<'a>(&'a mut self, buf: &mut [u8]) -> Recv<'a, UdpSocket> {
+        Recv::new(self, buf)
     }
 
     /// Read data from the socket into the specified buffer, returning the number of bytes read and
@@ -46,6 +79,13 @@ impl UdpSocket {
     /// and the [SocketAddr] of the remote host that sent the data.
     pub fn recv_msg<'a>(&'a mut self, bufs: &mut [Vec<u8>]) -> RecvMsg<'a, UdpSocket> {
         RecvMsg::new(self, bufs)
+    }
+
+    /// Send the specified data to the remote peer, returning the number of bytes read. Note that
+    /// this method requires that [UdpSocket::connect] be called successfuly to set the remote
+    /// address.
+    pub fn send<'a>(&'a mut self, buf: &[u8]) -> Send<'a, UdpSocket> {
+        Send::new(self, buf)
     }
 
     /// Send the specified data to the optionally specified host. Note that on unconnected sockets

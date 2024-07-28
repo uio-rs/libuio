@@ -2,7 +2,6 @@ use std::{
     cmp::Ordering,
     io,
     marker::PhantomData,
-    net::SocketAddr,
     os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd},
     pin::Pin,
     sync::mpsc::TryRecvError,
@@ -15,13 +14,13 @@ use io_uring::{cqueue, opcode, squeue, types};
 use crate::{
     context,
     io_uring::{Completion, CompletionStatus},
-    net::{getpeername, TcpStream},
+    net::TcpStream,
     sync::{channel, Receiver, Sender},
 };
 
 struct IncomingCompletion {
     fd: RawFd,
-    result: Sender<io::Result<(OwnedFd, SocketAddr)>>,
+    result: Sender<io::Result<OwnedFd>>,
 }
 
 impl Completion for IncomingCompletion {
@@ -29,10 +28,7 @@ impl Completion for IncomingCompletion {
         let result = value.result();
         let result = match result.cmp(&0) {
             Ordering::Less => Err(io::Error::from_raw_os_error(-result)),
-            Ordering::Equal | Ordering::Greater => {
-                let fd = unsafe { OwnedFd::from_raw_fd(result) };
-                getpeername(fd.as_raw_fd()).map(|addr| (fd, addr))
-            }
+            Ordering::Equal | Ordering::Greater => Ok(unsafe { OwnedFd::from_raw_fd(result) }),
         };
 
         match self.result.push(result) {
@@ -56,7 +52,7 @@ impl Completion for IncomingCompletion {
 pub struct Incoming<'a, T> {
     inner: PhantomData<&'a mut T>,
     id: usize,
-    stream: Receiver<io::Result<(OwnedFd, SocketAddr)>>,
+    stream: Receiver<io::Result<OwnedFd>>,
 }
 
 impl<'a, T> Drop for Incoming<'a, T> {

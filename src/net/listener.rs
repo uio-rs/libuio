@@ -4,7 +4,7 @@ use std::{
     os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use super::{socket, Accept, Incoming};
+use super::{getsockname, socket, Accept, Incoming};
 
 const DEFAULT_OUSTANDING: i32 = 1024;
 
@@ -42,7 +42,6 @@ const DEFAULT_OUSTANDING: i32 = 1024;
 /// # }
 /// ```
 pub struct TcpListener {
-    addr: SocketAddr,
     fd: OwnedFd,
 }
 
@@ -63,14 +62,23 @@ impl TcpListener {
         let addr = format!("{}:{}", host.as_ref(), port)
             .parse()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-        let (fd, addr) = socket::listener_socket(addr, outstanding)?;
+        let fd = socket::listener_socket(addr, outstanding)?;
 
-        Ok(TcpListener { addr, fd })
+        Ok(TcpListener { fd })
     }
 
-    /// Return the address this listener is bound to.
-    pub fn addr(&self) -> SocketAddr {
-        self.addr
+    /// Retrieve this sockets local [SocketAddr], or panics if there is either no local address or
+    /// some other [std::io::Error] is encountered.
+    ///
+    /// For a safe alternative use [TcpListener::try_local_addr].
+    pub fn local_addr(&self) -> SocketAddr {
+        self.try_local_addr().unwrap()
+    }
+
+    /// Retrieve this sockets local [SocketAddr] or returns an error if there is either no local
+    /// address for this socket or some other [std::io::Error] is encountered.
+    pub fn try_local_addr(&self) -> io::Result<SocketAddr> {
+        getsockname(self.fd.as_raw_fd())
     }
 
     /// Accept a single connection asynchronously, this will return an [Accept] future that when

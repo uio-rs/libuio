@@ -1,8 +1,9 @@
 use std::{
     cmp::Ordering,
     io,
+    marker::PhantomData,
     net::SocketAddr,
-    os::fd::{AsRawFd, OwnedFd, RawFd},
+    os::fd::{AsRawFd, RawFd},
     pin::Pin,
     task::{Context, Poll},
 };
@@ -14,7 +15,7 @@ use nix::libc;
 use crate::{
     context,
     io_uring::{Completion, CompletionStatus},
-    net::{getsockname, socket, SocketAddrC, TcpStream},
+    net::SocketAddrC,
     sync::OneShot,
 };
 
@@ -22,7 +23,7 @@ struct ConnectCompletion {
     addr: Pin<Box<SocketAddrC>>,
     addr_len: libc::socklen_t,
     fd: RawFd,
-    result: OneShot<io::Result<SocketAddr>>,
+    result: OneShot<io::Result<()>>,
 }
 
 impl Completion for ConnectCompletion {
@@ -30,7 +31,7 @@ impl Completion for ConnectCompletion {
         let result = value.result();
         let result = match result.cmp(&0) {
             Ordering::Less => Err(io::Error::from_raw_os_error(-result)),
-            Ordering::Equal | Ordering::Greater => getsockname(self.fd),
+            Ordering::Equal | Ordering::Greater => Ok(()),
         };
 
         self.result.complete(result);
@@ -45,38 +46,40 @@ impl Completion for ConnectCompletion {
 /// This represents a single use asynchronous connect operation to create a new [TcpStream] object
 /// to interact with a remote host on. This will ultimately return the connected and ready to use
 /// [TcpStream].
-pub struct Connect {
-    fd: Option<OwnedFd>,
+pub struct Connect<'a, T> {
+    inner: PhantomData<&'a mut T>,
     id: usize,
-    result: OneShot<io::Result<SocketAddr>>,
+    result: OneShot<io::Result<()>>,
 }
 
-impl Drop for Connect {
+impl<'a, T> Drop for Connect<'a, T> {
     fn drop(&mut self) {
         context::uring().deregister(self.id);
     }
 }
 
-impl Connect {
-    pub(crate) fn new(remote: SocketAddr) -> io::Result<Connect> {
-        let fd = socket::client_socket(remote)?;
-        let (addr, addr_len) = SocketAddrC::from_std(&remote);
+impl<'a, T> Connect<'a, T>
+where
+    T: AsRawFd,
+{
+    pub(crate) fn new(sock: &'a mut T, remote: &SocketAddr) -> Connect<'a, T> {
+        let (addr, addr_len) = SocketAddrC::from_std(remote);
         let addr = Box::pin(addr);
 
         let result = OneShot::new();
         let op = ConnectCompletion {
             addr,
             addr_len,
-            fd: fd.as_raw_fd(),
+            fd: sock.as_raw_fd(),
             result: result.clone(),
         };
         let id = context::uring().register(op);
 
-        Ok(Connect {
-            fd: Some(fd),
+        Connect {
+            inner: PhantomData,
             id,
             result,
-        })
+        }
     }
 
     fn set_waker(&mut self, cx: &mut Context<'_>) {
@@ -84,15 +87,16 @@ impl Connect {
     }
 }
 
-impl Future for Connect {
-    type Output = io::Result<TcpStream>;
+impl<'a, T> Future for Connect<'a, T>
+where
+    T: AsRawFd,
+{
+    type Output = io::Result<()>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.set_waker(cx);
 
         match self.result.take() {
-            Some(result) => {
-                Poll::Ready(result.map(|addr| TcpStream::from((self.fd.take().unwrap(), addr))))
-            }
+            Some(result) => Poll::Ready(result),
             None => Poll::Pending,
         }
     }

@@ -8,7 +8,7 @@ async fn main() {
         bufs.push(vec![0u8; 2]);
     }
 
-    println!("Listening for UDP messages on: {:?}", socket.addr());
+    println!("Listening for UDP messages on: {:?}", socket.local_addr());
 
     loop {
         let (recv, addr, raw) = match socket.recv_msg(bufs.as_mut_slice()).await {

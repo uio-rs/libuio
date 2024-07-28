@@ -2,40 +2,30 @@ use std::{
     cmp::Ordering,
     io,
     marker::PhantomData,
-    net::SocketAddr,
     os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd},
     pin::Pin,
+    ptr,
     task::{Context, Poll},
 };
 
 use futures::Future;
 use io_uring::{cqueue, opcode, squeue, types};
-use nix::libc;
 
 use crate::{
     context,
     io_uring::{Completion, CompletionStatus},
-    net::{SocketAddrC, TcpStream},
+    net::TcpStream,
     sync::OneShot,
 };
 
 struct AcceptCompletion {
     fd: RawFd,
-    addr: Pin<Box<SocketAddrC>>,
-    addr_len: libc::socklen_t,
-    conn: OneShot<io::Result<(OwnedFd, SocketAddr)>>,
+    conn: OneShot<io::Result<OwnedFd>>,
 }
 
 impl AcceptCompletion {
-    pub fn new(fd: RawFd, result: OneShot<io::Result<(OwnedFd, SocketAddr)>>) -> AcceptCompletion {
-        let (addr, addr_len) = SocketAddrC::new();
-        let addr = Box::pin(addr);
-        AcceptCompletion {
-            fd,
-            addr,
-            addr_len,
-            conn: result,
-        }
+    pub fn new(fd: RawFd, result: OneShot<io::Result<OwnedFd>>) -> AcceptCompletion {
+        AcceptCompletion { fd, conn: result }
     }
 }
 
@@ -44,10 +34,7 @@ impl Completion for AcceptCompletion {
         let result = value.result();
         let result = match result.cmp(&0) {
             Ordering::Less => Err(io::Error::from_raw_os_error(-result)),
-            Ordering::Equal | Ordering::Greater => {
-                let addr = self.addr.as_std();
-                Ok((unsafe { OwnedFd::from_raw_fd(result) }, addr))
-            }
+            Ordering::Equal | Ordering::Greater => Ok(unsafe { OwnedFd::from_raw_fd(result) }),
         };
 
         self.conn.complete(result);
@@ -55,12 +42,7 @@ impl Completion for AcceptCompletion {
     }
 
     fn as_entry(&mut self) -> squeue::Entry {
-        opcode::Accept::new(
-            types::Fd(self.fd),
-            self.addr.as_mut_ptr(),
-            (&mut self.addr_len) as *mut u32,
-        )
-        .build()
+        opcode::Accept::new(types::Fd(self.fd), ptr::null_mut(), ptr::null_mut()).build()
     }
 }
 
@@ -70,7 +52,7 @@ impl Completion for AcceptCompletion {
 pub struct Accept<'a, T> {
     inner: PhantomData<&'a mut T>,
     id: usize,
-    result: OneShot<io::Result<(OwnedFd, SocketAddr)>>,
+    result: OneShot<io::Result<OwnedFd>>,
 }
 
 impl<'a, T> Drop for Accept<'a, T> {

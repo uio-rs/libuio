@@ -4,28 +4,53 @@ use std::{
     os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use super::{Connect, Recv, Send};
+use super::{getpeername, getsockname, socket, Connect, Recv, Send};
 
 /// A [TcpStream] represents a bidirectional TCP connection that can read and write data to a
 /// remote host. There are two main ways to create a [TcpStream], either via the [super::TcpListener::accept]
 /// and [super::TcpListener::incoming] calls, or via the [TcpStream::connect] call.
 pub struct TcpStream {
     fd: OwnedFd,
-    addr: SocketAddr,
 }
 
 impl TcpStream {
-    /// Connect to a given remote host and return a [Connect] future to poll for completion.
-    pub fn connect(addr: impl AsRef<str>, port: u16) -> io::Result<Connect> {
-        let addr = format!("{}:{}", addr.as_ref(), port)
-            .parse()
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-        Connect::new(addr)
+    pub fn new(ipv4: bool) -> io::Result<TcpStream> {
+        socket::client_socket(ipv4).map(TcpStream::from)
     }
 
-    /// Retrieve this connected clients local [SocketAddr].
-    pub fn addr(&self) -> SocketAddr {
-        self.addr
+    /// Connect to a given remote host and return a [Connect] future to poll for completion.
+    pub fn connect<'a>(&'a mut self, addr: &SocketAddr) -> Connect<'a, TcpStream> {
+        Connect::new(self, addr)
+    }
+
+    /// Retrieve this sockets local [SocketAddr], or panics if there is either no local address or
+    /// some other [std::io::Error] is encountered.
+    ///
+    /// For a safe alternative use [TcpStream::try_local_addr].
+    pub fn local_addr(&self) -> SocketAddr {
+        self.try_local_addr().unwrap()
+    }
+
+    /// Retrieve this sockets local [SocketAddr] or returns an error if there is either no local
+    /// address for this socket or some other [std::io::Error] is encountered.
+    pub fn try_local_addr(&self) -> io::Result<SocketAddr> {
+        getsockname(self.fd.as_raw_fd())
+    }
+
+    /// Retrieve the peer [SocketAddr] for connected socket which have successfully called
+    /// [TcpStream::connect]. or panics an error if there is either no peer address or some other
+    /// [std::io::Error] is encountered.
+    ///
+    /// For a safe alternative use [TcpStream::try_peer_addr].
+    pub fn peer_addr(&self) -> SocketAddr {
+        self.try_peer_addr().unwrap()
+    }
+
+    /// Retrieve the peer [SocketAddr] for connected socket which have successfully called
+    /// [TcpStream::connect]. or returns an error if there is either no peer address or some other
+    /// [std::io::Error] is encountered.
+    pub fn try_peer_addr(&self) -> io::Result<SocketAddr> {
+        getpeername(self.fd.as_raw_fd())
     }
 
     /// Receive data using the given buffer from the remote host. This will return a single use
@@ -42,10 +67,9 @@ impl TcpStream {
     }
 }
 
-impl From<(OwnedFd, SocketAddr)> for TcpStream {
-    fn from(tuple: (OwnedFd, SocketAddr)) -> Self {
-        let (fd, addr) = tuple;
-        TcpStream { fd, addr }
+impl From<OwnedFd> for TcpStream {
+    fn from(fd: OwnedFd) -> Self {
+        TcpStream { fd }
     }
 }
 

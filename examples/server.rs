@@ -12,7 +12,7 @@ async fn main() -> io::Result<()> {
 
     let mut buf = vec![0u8; 1024];
 
-    println!("Listening on: {}", listener.addr());
+    println!("Listening on: {}", listener.local_addr());
 
     // Or we can grab a async stream of incoming connections, this is using the
     // opcode::AcceptMulti, which is a highly efficient implementation of the standard accept
@@ -31,7 +31,7 @@ async fn main() -> io::Result<()> {
             }
         };
 
-        println!("Got connection from: {}", conn.addr());
+        println!("Got connection from: {}", conn.peer_addr());
 
         let read = match conn.recv(buf.as_mut_slice()).await {
             Ok(ret) => ret,

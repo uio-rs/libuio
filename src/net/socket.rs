@@ -9,12 +9,7 @@ use nix::sys::socket::{
     SockaddrStorage,
 };
 
-use super::getsockname;
-
-pub(super) fn listener_socket(
-    addr: SocketAddr,
-    outstanding: i32,
-) -> io::Result<(OwnedFd, SocketAddr)> {
+pub(super) fn listener_socket(addr: SocketAddr, outstanding: i32) -> io::Result<OwnedFd> {
     let family = if addr.is_ipv4() {
         AddressFamily::Inet
     } else {
@@ -28,11 +23,11 @@ pub(super) fn listener_socket(
 
     bind(fd.as_raw_fd(), &addr)?;
     listen(&fd, Backlog::new(outstanding)?)?;
-    getsockname(fd.as_raw_fd()).map(|addr| (fd, addr))
+    Ok(fd)
 }
 
-pub(super) fn client_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
-    let family = if addr.is_ipv4() {
+pub(super) fn client_socket(ipv4: bool) -> io::Result<OwnedFd> {
+    let family = if ipv4 {
         AddressFamily::Inet
     } else {
         AddressFamily::Inet6
@@ -41,7 +36,7 @@ pub(super) fn client_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
     socket(family, SockType::Stream, SockFlag::empty(), None).map_err(io::Error::from)
 }
 
-pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<(OwnedFd, SocketAddr)> {
+pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
     let famil = if addr.is_ipv4() {
         AddressFamily::Inet
     } else {
@@ -55,5 +50,5 @@ pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<(OwnedFd, SocketAddr)> 
 
     bind(fd.as_raw_fd(), &addr)?;
 
-    getsockname(fd.as_raw_fd()).map(|addr| (fd, addr))
+    Ok(fd)
 }
