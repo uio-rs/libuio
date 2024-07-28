@@ -175,8 +175,9 @@ dependencies = [
 
 [[package]]
 name = "libuio-macros"
-version = "0.2.0"
-source = "git+https://github.com/uio-rs/libuio-macros.git?rev=cacf3a3565b15d37125a30de1b1a015a2c246a3f#cacf3a3565b15d37125a30de1b1a015a2c246a3f"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95f754e25eb3eee30ddc3c67e45082e7bfbc5c886c07f74bdcc95649b2ad22c5"
 dependencies = [
  "quote",
  "syn",

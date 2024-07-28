@@ -19,7 +19,7 @@ slab = { version = "~0.4" }
 thiserror = { version = "~1.0" }
 thread_local = { version = "~1.1" }
 tracing = { version = "~0.1" }
-libuio-macros = { version = "=0.2.0" }
+libuio-macros = { version = "=0.2.1" }
 
 [dev-dependencies]
 tracing-subscriber = "0.3"

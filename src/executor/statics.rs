@@ -31,6 +31,7 @@ pub(crate) fn set_pool(pool: ThreadPool) {
 ///     });
 ///     // Do other things here! This will execute immediately after `spawn()` returns, and will
 ///     // not wait for the async block to be executed.
+///     Ok(())
 /// }
 ///
 /// ```

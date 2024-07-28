@@ -37,6 +37,7 @@ impl ArcWake for DummyWaker {
 ///         // Do some async work!
 ///     });
 ///     // We won't get here until the above async closure completes.
+///     Ok(())
 /// }
 /// ```
 ///

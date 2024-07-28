@@ -43,7 +43,7 @@ pub enum CompletionStatus {
 /// ```no_run
 /// use io_uring::{opcode, types::CancelBuilder};
 ///
-/// use super::{Completion, CompletionStatus};
+/// use libuio::io_uring::{Completion, CompletionStatus};
 ///
 /// /// A simple cancel event based on a state index.
 /// pub struct Cancel {
