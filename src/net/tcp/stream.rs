@@ -4,7 +4,7 @@ use std::{
     os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use super::{getpeername, getsockname, socket, Connect, Recv, Send};
+use crate::net::{getpeername, getsockname, socket, Connect, Recv, Send};
 
 /// A [TcpStream] represents a bidirectional TCP connection that can read and write data to a
 /// remote host. There are two main ways to create a [TcpStream], either via the [super::TcpListener::accept]

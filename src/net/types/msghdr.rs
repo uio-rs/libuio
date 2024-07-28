@@ -5,7 +5,7 @@ use crate::ptr::SendMut;
 use super::IoVec;
 
 #[repr(C)]
-pub(crate) struct MsgHdr {
+pub struct MsgHdr {
     pub msg_name: SendMut<libc::c_void>,
     pub msg_namelen: libc::socklen_t,
     pub msg_iov: SendMut<IoVec>,

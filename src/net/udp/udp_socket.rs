@@ -4,7 +4,7 @@ use std::{
     os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use super::{
+use crate::net::{
     getpeername, getsockname, socket, Connect, Recv, RecvFrom, RecvMsg, Send, SendMsg, SendTo,
 };
 
