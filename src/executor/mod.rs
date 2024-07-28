@@ -11,7 +11,11 @@
 //! [futures::executor::ThreadPoolBuilder]: https://docs.rs/futures/0.3.30/futures/executor/struct.ThreadPoolBuilder.html
 //! [futures::executor::unpark_mutex]: https://github.com/rust-lang/futures-rs/blob/0.3.30/futures-executor/src/unpark_mutex.rs
 
+mod block_on;
 mod pool;
+mod statics;
 mod unpark_mutex;
 
+pub use block_on::block_on;
 pub use pool::{ThreadPool, ThreadPoolBuilder};
+pub use statics::spawn;

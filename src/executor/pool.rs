@@ -16,7 +16,7 @@ use futures::{
 
 use crate::context;
 
-use super::unpark_mutex::UnparkMutex;
+use super::{statics::set_pool, unpark_mutex::UnparkMutex};
 
 /// This is a modified version of the [futures::executor::ThreadPool],
 /// that integrates an io_uring based I/O completion system into it. Otherwise the implementation
@@ -25,7 +25,6 @@ use super::unpark_mutex::UnparkMutex;
 /// [futures::executor::ThreadPool]: https://docs.rs/futures/latest/futures/executor/struct.ThreadPool.html
 pub struct ThreadPool {
     state: Arc<PoolState>,
-    wg: Option<WaitGroup>,
 }
 
 /// Thread pool configuration object.
@@ -128,13 +127,6 @@ impl ThreadPool {
     {
         self.spawn_obj_ok(FutureObj::new(Box::new(future)))
     }
-
-    /// Wait for the [ThreadPool] to exit completely and shutdown.
-    pub fn wait(mut self) {
-        if let Some(wg) = self.wg.take() {
-            wg.wait();
-        }
-    }
 }
 
 impl Spawn for ThreadPool {
@@ -197,7 +189,6 @@ impl Clone for ThreadPool {
         self.state.cnt.fetch_add(1, Ordering::Relaxed);
         Self {
             state: self.state.clone(),
-            wg: self.wg.clone(),
         }
     }
 }
@@ -296,14 +287,13 @@ impl ThreadPoolBuilder {
     pub fn create(&mut self) -> Result<ThreadPool, io::Error> {
         let (tx, rx) = mpsc::channel();
         let wg = WaitGroup::new();
-        let mut pool = ThreadPool {
+        let pool = ThreadPool {
             state: Arc::new(PoolState {
                 tx: Mutex::new(tx),
                 rx: Mutex::new(rx),
                 cnt: AtomicUsize::new(1),
                 size: self.pool_size,
             }),
-            wg: None,
         };
 
         for counter in 0..self.pool_size {
@@ -323,7 +313,7 @@ impl ThreadPoolBuilder {
                 drop(wg)
             })?;
         }
-        pool.wg = Some(wg);
+        set_pool(pool.clone());
         Ok(pool)
     }
 }

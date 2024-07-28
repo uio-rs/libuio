@@ -163,6 +163,7 @@ dependencies = [
  "futures",
  "io-uring",
  "lazy_static",
+ "libuio-macros",
  "nix",
  "num_cpus",
  "slab",
@@ -170,6 +171,15 @@ dependencies = [
  "thread_local",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "libuio-macros"
+version = "0.2.0"
+source = "git+https://github.com/uio-rs/libuio-macros.git?rev=cacf3a3565b15d37125a30de1b1a015a2c246a3f#cacf3a3565b15d37125a30de1b1a015a2c246a3f"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
