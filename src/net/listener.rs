@@ -60,7 +60,9 @@ impl TcpListener {
         port: u16,
         outstanding: i32,
     ) -> io::Result<TcpListener> {
-        let addr = format!("{}:{}", host.as_ref(), port).parse().unwrap();
+        let addr = format!("{}:{}", host.as_ref(), port)
+            .parse()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         let (fd, addr) = socket::listener_socket(addr, outstanding)?;
 
         Ok(TcpListener { addr, fd })

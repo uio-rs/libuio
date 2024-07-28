@@ -5,6 +5,7 @@
 /// reads and immutable memory regions for sends. To do this we need to rely on pinned heap memory,
 /// and as such these pointers are safe to pass around to other threads, primarily via the
 /// executors themselves as they execute async tasks.
+#[repr(transparent)]
 pub struct SendConst<T>(*const T);
 
 impl<T> SendConst<T> {
@@ -37,6 +38,7 @@ unsafe impl<T> Send for SendConst<T> {}
 /// reads and immutable memory regions for sends. To do this we need to rely on pinned heap memory,
 /// and as such these pointers are safe to pass around to other threads, primarily via the
 /// executors themselves as they execute async tasks.
+#[repr(transparent)]
 pub struct SendMut<T>(*mut T);
 
 impl<T> SendMut<T> {

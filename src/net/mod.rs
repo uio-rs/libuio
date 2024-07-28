@@ -15,12 +15,19 @@
 //! [tokio::net]: https://docs.rs/tokio/latest/tokio/net/index.html
 
 mod addr;
+mod dgram;
 mod futures;
+mod iovec;
 mod listener;
+mod msghdr;
 mod socket;
 mod stream;
 
 pub(crate) use addr::{getpeername, getsockname, SocketAddrC};
+pub(crate) use iovec::IoVec;
+pub(crate) use msghdr::MsgHdr;
+
+pub use dgram::UdpSocket;
 pub use futures::*;
 pub use listener::TcpListener;
 pub use stream::TcpStream;

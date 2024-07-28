@@ -41,7 +41,7 @@ pub(super) fn client_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
     socket(family, SockType::Stream, SockFlag::empty(), None).map_err(io::Error::from)
 }
 
-pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
+pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<(OwnedFd, SocketAddr)> {
     let famil = if addr.is_ipv4() {
         AddressFamily::Inet
     } else {
@@ -55,5 +55,5 @@ pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
 
     bind(fd.as_raw_fd(), &addr)?;
 
-    Ok(fd)
+    getsockname(fd.as_raw_fd()).map(|addr| (fd, addr))
 }

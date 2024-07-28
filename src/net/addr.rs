@@ -30,6 +30,12 @@ impl SocketAddrC {
             size_of::<libc::sockaddr_in6>() as libc::socklen_t,
         )
     }
+
+    pub fn is_valid(&self) -> bool {
+        let family = unsafe { self.v4.sin_family as i32 };
+        family == libc::AF_INET || family == libc::AF_INET6
+    }
+
     pub(crate) fn from_std(addr: &SocketAddr) -> (SocketAddrC, libc::socklen_t) {
         match addr {
             SocketAddr::V4(ref v4) => {

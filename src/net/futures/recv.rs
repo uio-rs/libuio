@@ -60,7 +60,7 @@ impl<'a, T> Recv<'a, T>
 where
     T: AsRawFd,
 {
-    pub fn new<'buf>(stream: &'a mut T, buf: &'buf mut [u8]) -> Recv<'a, T> {
+    pub(crate) fn new<'buf>(stream: &'a mut T, buf: &'buf mut [u8]) -> Recv<'a, T> {
         let result = OneShot::new();
         let buf_len = buf.len() as u32;
         let buf = unsafe { SendMut::new(buf.as_mut_ptr()) };
