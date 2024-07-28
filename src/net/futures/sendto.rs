@@ -16,8 +16,8 @@ use crate::{
     context,
     io_uring::{Completion, CompletionStatus},
     net::{IoVec, MsgHdr, SocketAddrC},
+    ptr::SendMut,
     sync::OneShot,
-    util::SendMut,
 };
 
 struct SendToCompletion {

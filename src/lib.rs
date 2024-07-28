@@ -102,6 +102,8 @@ pub mod context;
 pub mod executor;
 pub mod io_uring;
 pub mod net;
+pub(crate) mod ptr;
 pub mod sync;
-pub(crate) mod util;
+
+pub use executor::{spawn, ThreadPool, ThreadPoolBuilder};
 pub use libuio_macros::main;

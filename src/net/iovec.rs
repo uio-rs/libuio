@@ -1,6 +1,6 @@
 use nix::libc;
 
-use crate::util::SendMut;
+use crate::ptr::SendMut;
 
 #[repr(C)]
 pub struct IoVec {

@@ -1,6 +1,6 @@
 [package]
 name = "libuio"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Christian Saide"]
 description = "A io_uring based async framework designed for high performance networking on linux."
@@ -9,17 +9,19 @@ repository = "https://github.com/uio-rs/libuio"
 exclude = ["/dist", "Makefile"]
 
 [dependencies]
-crossbeam-utils = { version = "~0.8" }
 futures = { version = "~0.3" }
 io-uring = { version = "~0.6" }
 lazy_static = { version = "~1.5" }
 nix = { version = "~0.29", features = ["net", "socket"] }
 num_cpus = { version = "~1.16" }
 slab = { version = "~0.4" }
-thiserror = { version = "~1.0" }
 thread_local = { version = "~1.1" }
 tracing = { version = "~0.1" }
-libuio-macros = { version = "=0.2.1" }
+libuio-macros = { version = "=0.2.1", optional = true }
 
 [dev-dependencies]
 tracing-subscriber = "0.3"
+
+[features]
+default = ["macros"]
+macros = ["dep:libuio-macros"]

@@ -13,8 +13,8 @@ use io_uring::{cqueue, opcode, squeue, types};
 use crate::{
     context,
     io_uring::{Completion, CompletionStatus},
+    ptr::SendMut,
     sync::OneShot,
-    util::SendMut,
 };
 
 struct RecvCompletion {

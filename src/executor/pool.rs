@@ -7,7 +7,6 @@ use std::{
     thread,
 };
 
-use crossbeam_utils::sync::WaitGroup;
 use futures::{
     executor::enter,
     future::{Future, FutureExt, FutureObj},
@@ -286,7 +285,6 @@ impl ThreadPoolBuilder {
     /// Create a [`ThreadPool`](ThreadPool) with the given configuration.
     pub fn create(&mut self) -> Result<ThreadPool, io::Error> {
         let (tx, rx) = mpsc::channel();
-        let wg = WaitGroup::new();
         let pool = ThreadPool {
             state: Arc::new(PoolState {
                 tx: Mutex::new(tx),
@@ -298,7 +296,6 @@ impl ThreadPoolBuilder {
 
         for counter in 0..self.pool_size {
             let state = pool.state.clone();
-            let wg = wg.clone();
             let after_start = self.after_start.clone();
             let before_stop = self.before_stop.clone();
             let mut thread_builder = thread::Builder::new();
@@ -310,7 +307,6 @@ impl ThreadPoolBuilder {
             }
             thread_builder.spawn(move || {
                 state.work(counter, after_start, before_stop);
-                drop(wg)
             })?;
         }
         set_pool(pool.clone());
