@@ -9,7 +9,7 @@ use futures::{
     Future,
 };
 
-use crate::context;
+use crate::io_uring;
 
 struct DummyWaker;
 
@@ -50,7 +50,7 @@ pub fn block_on<F: Future>(f: F) -> F::Output {
     let mut cx = Context::from_waker(&waker);
     loop {
         // Grab our thread local io_uring and run it.
-        context::uring().run().expect("Failed to run I/O loop.");
+        io_uring::uring().run().expect("Failed to run I/O loop.");
         if let Poll::Ready(result) = f.as_mut().poll(&mut cx) {
             return result;
         }

@@ -8,12 +8,11 @@ use std::{
     task::{Context, Poll},
 };
 
+use ::io_uring::{cqueue, opcode, squeue, types};
 use futures::Future;
-use io_uring::{cqueue, opcode, squeue, types};
 
 use crate::{
-    context,
-    io_uring::{Completion, CompletionStatus},
+    io_uring::{self, Completion, CompletionStatus},
     net::TcpStream,
     sync::OneShot,
 };
@@ -57,7 +56,7 @@ pub struct Accept<'a, T> {
 
 impl<'a, T> Drop for Accept<'a, T> {
     fn drop(&mut self) {
-        context::uring().deregister(self.id);
+        io_uring::uring().deregister(self.id);
     }
 }
 
@@ -68,7 +67,7 @@ where
     pub(crate) fn new(listener: &'a mut T) -> Accept<'a, T> {
         let result = OneShot::new();
         let op = AcceptCompletion::new(listener.as_raw_fd(), result.clone());
-        let id = context::uring().register(op);
+        let id = io_uring::uring().register(op);
 
         Accept {
             inner: PhantomData,

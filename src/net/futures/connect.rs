@@ -8,13 +8,12 @@ use std::{
     task::{Context, Poll},
 };
 
+use ::io_uring::{cqueue, opcode, squeue, types};
 use futures::Future;
-use io_uring::{cqueue, opcode, types};
 use nix::libc;
 
 use crate::{
-    context,
-    io_uring::{Completion, CompletionStatus},
+    io_uring::{self, Completion, CompletionStatus},
     net::SocketAddrC,
     sync::OneShot,
 };
@@ -38,7 +37,7 @@ impl Completion for ConnectCompletion {
         CompletionStatus::Finalized
     }
 
-    fn as_entry(&mut self) -> io_uring::squeue::Entry {
+    fn as_entry(&mut self) -> squeue::Entry {
         opcode::Connect::new(types::Fd(self.fd), self.addr.as_ptr(), self.addr_len).build()
     }
 }
@@ -54,7 +53,7 @@ pub struct Connect<'a, T> {
 
 impl<'a, T> Drop for Connect<'a, T> {
     fn drop(&mut self) {
-        context::uring().deregister(self.id);
+        io_uring::uring().deregister(self.id);
     }
 }
 
@@ -73,7 +72,7 @@ where
             fd: sock.as_raw_fd(),
             result: result.clone(),
         };
-        let id = context::uring().register(op);
+        let id = io_uring::uring().register(op);
 
         Connect {
             inner: PhantomData,

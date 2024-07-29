@@ -8,12 +8,11 @@ use std::{
     task::{Context, Poll},
 };
 
+use ::io_uring::{cqueue, opcode, squeue, types};
 use futures::Stream;
-use io_uring::{cqueue, opcode, squeue, types};
 
 use crate::{
-    context,
-    io_uring::{Completion, CompletionStatus},
+    io_uring::{self, Completion, CompletionStatus},
     net::TcpStream,
     sync::{channel, Receiver, Sender},
 };
@@ -57,7 +56,7 @@ pub struct Incoming<'a, T> {
 
 impl<'a, T> Drop for Incoming<'a, T> {
     fn drop(&mut self) {
-        context::uring().deregister(self.id);
+        io_uring::uring().deregister(self.id);
     }
 }
 
@@ -71,7 +70,7 @@ where
             fd: listener.as_raw_fd(),
             result: tx,
         };
-        let id = context::uring().register(op);
+        let id = io_uring::uring().register(op);
 
         Incoming {
             inner: PhantomData,

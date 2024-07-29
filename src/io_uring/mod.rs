@@ -14,6 +14,10 @@
 mod cancel;
 mod completion;
 mod engine;
+mod handle;
+mod statics;
 
 pub use completion::{Completion, CompletionStatus};
 pub use engine::UringDriver;
+pub use handle::Handle;
+pub use statics::{handle, uring};

@@ -13,7 +13,7 @@ use futures::{
     task::{waker_ref, ArcWake, Context, Poll, Spawn, SpawnError},
 };
 
-use crate::context;
+use crate::io_uring;
 
 use super::{statics::set_pool, unpark_mutex::UnparkMutex};
 
@@ -169,7 +169,7 @@ impl PoolState {
         }
         loop {
             // Grab our thread local io_uring and run it.
-            context::uring().run().expect("Failed to run I/O loop.");
+            io_uring::uring().run().expect("Failed to run I/O loop.");
 
             // Now handle any outstanding tasks, breaking out of the loop if we are in graceful
             // shutdown mode or we had a fatal error.

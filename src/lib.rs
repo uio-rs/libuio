@@ -105,7 +105,6 @@
 //! As the above example demonstrates this is almost a direct drop in replacement for
 //! [std::net::TcpListener] and [std::net::TcpStream].
 
-pub mod context;
 pub mod executor;
 pub mod io_uring;
 pub mod net;
