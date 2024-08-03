@@ -23,13 +23,11 @@
 //!     // is set to listen on [::]:9091 and have a connection backlog of 1024.
 //!     let mut listener = TcpListener::with_outstanding("[::]", 9091, 1024)?;
 //!
-//!     let mut buf = vec![0u8; 1024];
-//!
 //!     println!("Listening on: {}", listener.local_addr());
 //!
-//!     // Or we can grab a async stream of incoming connections, this is using the
-//!     // opcode::AcceptMulti, which is a highly efficient implementation of the standard accept
-//!     // loop. This will loop endlessly until dropped or there is an unrecoverable error.
+//!     // We can grab a async stream of incoming connections, this is using the opcode::AcceptMulti,
+//!     // which is a highly efficient implementation of the standard accept loop. This will loop
+//!     // endlessly until dropped or there is an unrecoverable error.
 //!     //
 //!     // Note that you want to call incoming OUTSIDE of a loop like bellow, otherwise you will
 //!     // be implicitly droping/recrating the incoming future which results in performance worse
@@ -46,21 +44,20 @@
 //!
 //!         println!("Got connection from: {}", conn.peer_addr());
 //!
-//!         let read = match conn.recv(buf.as_mut_slice()).await {
-//!             Ok(ret) => ret,
+//!         let buf = Vec::with_capacity(1024);
+//!         let buf = match conn.recv(buf).await {
+//!             Ok(buf) => buf,
 //!             Err(e) => {
 //!                 println!("Failed to receive from client: {}", e);
 //!                 continue;
 //!             }
 //!         };
 //!
-//!         let s = String::from_utf8_lossy(&buf[..read]);
+//!         let s = String::from_utf8_lossy(&buf);
 //!
 //!         println!("Client request: {}", s);
 //!
-//!         conn.send(&buf[..read])
-//!             .await
-//!             .expect("Failed to respond to client.");
+//!         conn.send(buf).await.expect("Failed to respond to client.");
 //!     }
 //!     Ok(())
 //! }
@@ -90,13 +87,14 @@
 //!     );
 //!
 //!     // Send some data to the remote host.
-//!     client.send("Hello from client!".as_bytes()).await?;
+//!     client
+//!         .send("Hello from client!".as_bytes().to_vec())
+//!         .await?;
 //!
 //!     // Now read back anything the server sent and then exit.
-//!     let mut buf = vec![0u8; 1024];
-//!     let read = client.recv(buf.as_mut_slice()).await?;
+//!     let buf = client.recv(Vec::with_capacity(1024)).await?;
 //!
-//!     let str = String::from_utf8_lossy(&buf[..read]);
+//!     let str = String::from_utf8_lossy(&buf);
 //!     println!("Server response: {}", str);
 //!     Ok(())
 //! }
@@ -108,8 +106,6 @@
 pub mod executor;
 pub mod io_uring;
 pub mod net;
-pub(crate) mod ptr;
 pub mod sync;
 
-pub use executor::{spawn, ThreadPool, ThreadPoolBuilder};
 pub use libuio_macros::main;

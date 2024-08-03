@@ -6,6 +6,7 @@ use std::{
     task::Waker,
 };
 
+#[derive(Debug)]
 pub struct Receiver<T> {
     waker: Arc<Mutex<Option<Waker>>>,
     rx: mpsc::Receiver<T>,

@@ -65,46 +65,42 @@ impl UdpSocket {
     /// Read data from the socket into the specified buffer, returning the number of bytes read.
     /// Note that this method requires that [UdpSocket::connect] be called successfuly to set the
     /// remote address.
-    pub fn recv<'a>(&'a mut self, buf: &mut [u8]) -> Recv<'a, UdpSocket> {
+    pub fn recv(&mut self, buf: Vec<u8>) -> Recv<'_, UdpSocket> {
         Recv::new(self, buf)
     }
 
     /// Read data from the socket into the specified buffer, returning the number of bytes read and
     /// the [SocketAddr] of the remote host that sent the data.
-    pub fn recv_from<'a>(&'a mut self, buf: &mut [u8]) -> RecvFrom<'a, UdpSocket> {
+    pub fn recv_from(&mut self, buf: Vec<u8>) -> RecvFrom<'_, UdpSocket> {
         RecvFrom::new(self, buf)
     }
 
     /// Read data from the socket into the specified buffers, returning the number of bytes read
     /// and the [SocketAddr] of the remote host that sent the data.
-    pub fn recv_msg<'a>(&'a mut self, bufs: &mut [Vec<u8>]) -> RecvMsg<'a, UdpSocket> {
+    pub fn recv_msg(&mut self, bufs: Vec<Vec<u8>>) -> RecvMsg<'_, UdpSocket> {
         RecvMsg::new(self, bufs)
     }
 
     /// Send the specified data to the remote peer, returning the number of bytes read. Note that
     /// this method requires that [UdpSocket::connect] be called successfuly to set the remote
     /// address.
-    pub fn send<'a>(&'a mut self, buf: &[u8]) -> Send<'a, UdpSocket> {
+    pub fn send(&mut self, buf: Vec<u8>) -> Send<'_, UdpSocket> {
         Send::new(self, buf)
     }
 
     /// Send the specified data to the optionally specified host. Note that on unconnected sockets
     /// the remote host is required.
-    pub fn send_to<'a>(
-        &'a mut self,
-        buf: &mut [u8],
-        addr: Option<&SocketAddr>,
-    ) -> SendTo<'a, UdpSocket> {
+    pub fn send_to(&mut self, buf: Vec<u8>, addr: Option<SocketAddr>) -> SendTo<'_, UdpSocket> {
         SendTo::new(self, buf, addr)
     }
 
     /// Send the data across all specified buffers to the optionally specified host. Note that on
     /// unconnected sockets the remote host is required.
-    pub fn send_msg<'a>(
-        &'a mut self,
-        bufs: &mut [Vec<u8>],
-        addr: Option<&SocketAddr>,
-    ) -> SendMsg<'a, UdpSocket> {
+    pub fn send_msg(
+        &mut self,
+        bufs: Vec<Vec<u8>>,
+        addr: Option<SocketAddr>,
+    ) -> SendMsg<'_, UdpSocket> {
         SendMsg::new(self, bufs, addr)
     }
 }

@@ -29,7 +29,7 @@ impl AcceptCompletion {
 }
 
 impl Completion for AcceptCompletion {
-    fn resolve(&self, value: cqueue::Entry) -> CompletionStatus {
+    fn resolve(&mut self, value: cqueue::Entry) -> CompletionStatus {
         let result = value.result();
         let result = match result.cmp(&0) {
             Ordering::Less => Err(io::Error::from_raw_os_error(-result)),

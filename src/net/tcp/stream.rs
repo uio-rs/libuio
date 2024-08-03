@@ -56,13 +56,13 @@ impl TcpStream {
     /// Receive data using the given buffer from the remote host. This will return a single use
     /// [Recv] future that returns the amount of data read into the buffer, and whether or not the
     /// socket had more data available for read.
-    pub fn recv<'a>(&'a mut self, buf: &'a mut [u8]) -> Recv<'a, TcpStream> {
+    pub fn recv(&mut self, buf: Vec<u8>) -> Recv<'_, TcpStream> {
         Recv::new(self, buf)
     }
 
     /// Send the data in the given buffer to the remote host. This will return a single use [Send]
     /// future that returns the amount of data sent from the buffer.
-    pub fn send<'a>(&'a mut self, buf: &'a [u8]) -> Send<'a, TcpStream> {
+    pub fn send(&mut self, buf: Vec<u8>) -> Send<'_, TcpStream> {
         Send::new(self, buf)
     }
 }

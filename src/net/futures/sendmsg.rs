@@ -15,27 +15,29 @@ use futures::Future;
 use crate::{
     io_uring::{self, Completion, CompletionStatus},
     net::{IoVec, MsgHdr, SocketAddrC},
-    ptr::SendMut,
     sync::OneShot,
 };
 
 struct SendMsgCompletion {
     fd: RawFd,
     addr: Option<Pin<Box<SocketAddrC>>>,
-    iovecs: Pin<Vec<IoVec>>,
+    bufs: Vec<Vec<u8>>,
+    iovecs: Vec<IoVec>,
     hdr: Pin<Box<MsgHdr>>,
-    result: OneShot<io::Result<usize>>,
+    result: OneShot<io::Result<(usize, Vec<Vec<u8>>)>>,
 }
 
 impl Completion for SendMsgCompletion {
-    fn resolve(&self, value: cqueue::Entry) -> CompletionStatus {
+    fn resolve(&mut self, value: cqueue::Entry) -> CompletionStatus {
+        let bufs = std::mem::take(&mut self.bufs);
+
         let result = value.result();
         let result = match result.cmp(&0) {
             Ordering::Less => Err(io::Error::from_raw_os_error(-result)),
-            Ordering::Equal | Ordering::Greater => Ok(result as usize),
+            Ordering::Equal | Ordering::Greater => Ok((result as usize, bufs)),
         };
 
-        assert!(self.iovecs.len() > 0);
+        assert!(!self.iovecs.is_empty());
         if let Some(addr) = &self.addr {
             assert!(addr.is_valid());
         }
@@ -54,7 +56,7 @@ impl Completion for SendMsgCompletion {
 pub struct SendMsg<'a, T> {
     inner: PhantomData<&'a mut T>,
     id: usize,
-    result: OneShot<io::Result<usize>>,
+    result: OneShot<io::Result<(usize, Vec<Vec<u8>>)>>,
 }
 
 impl<'a, T> Drop for SendMsg<'a, T> {
@@ -67,16 +69,16 @@ impl<'a, T> SendMsg<'a, T>
 where
     T: AsRawFd,
 {
-    pub(crate) fn new<'b>(
+    pub(crate) fn new(
         sock: &'a mut T,
-        bufs: &'b mut [Vec<u8>],
-        addr: Option<&SocketAddr>,
+        mut bufs: Vec<Vec<u8>>,
+        addr: Option<SocketAddr>,
     ) -> SendMsg<'a, T> {
         let result = OneShot::new();
 
         let (addr, addr_ptr, addr_len) = match addr {
             Some(addr) => {
-                let (addr, addr_len) = SocketAddrC::from_std(addr);
+                let (addr, addr_len) = SocketAddrC::from_std(&addr);
                 let mut addr = Box::pin(addr);
                 let addr_ptr = addr.as_mut_ptr();
                 (Some(addr), addr_ptr as _, addr_len)
@@ -87,18 +89,17 @@ where
         let mut iovecs = Vec::with_capacity(bufs.len());
         for buf in bufs.iter_mut() {
             iovecs.push(IoVec {
-                iov_base: unsafe { SendMut::new(buf.as_mut_ptr() as _) },
+                iov_base: buf.as_mut_ptr() as _,
                 iov_len: buf.len(),
             })
         }
-        let mut iovecs = Pin::new(iovecs);
 
         let hdr = MsgHdr {
-            msg_name: unsafe { SendMut::new(addr_ptr) },
+            msg_name: addr_ptr,
             msg_namelen: addr_len,
-            msg_iov: unsafe { SendMut::new(iovecs.as_mut_ptr()) },
+            msg_iov: iovecs.as_mut_ptr() as _,
             msg_iovlen: iovecs.len(),
-            msg_control: unsafe { SendMut::new(ptr::null_mut()) },
+            msg_control: ptr::null_mut(),
             msg_controllen: 0,
             msg_flags: 0,
         };
@@ -107,6 +108,7 @@ where
         let op = SendMsgCompletion {
             fd: sock.as_raw_fd(),
             addr,
+            bufs,
             iovecs,
             hdr,
             result: result.clone(),
@@ -129,7 +131,7 @@ impl<'a, T> Future for SendMsg<'a, T>
 where
     T: AsRawFd,
 {
-    type Output = io::Result<usize>;
+    type Output = io::Result<(usize, Vec<Vec<u8>>)>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.set_waker(cx);
         match self.result.take() {
