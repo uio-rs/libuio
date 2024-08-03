@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use thread_local::ThreadLocal;
 
-use crate::io_uring::UringDriver;
+use super::UringDriver;
 
 /// Represents a thread local handle to retrieve a [Uring] object from. This is used to
 /// transparently inject the [Uring] into the various [crate::net] implementations. It is generally

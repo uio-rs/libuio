@@ -4,7 +4,7 @@ use std::{
     os::fd::{AsRawFd, OwnedFd, RawFd},
 };
 
-use super::{getsockname, socket, Accept, Incoming};
+use crate::net::{getsockname, socket, Accept, Incoming};
 
 const DEFAULT_OUSTANDING: i32 = 1024;
 

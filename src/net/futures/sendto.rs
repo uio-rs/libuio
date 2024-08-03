@@ -9,34 +9,35 @@ use std::{
     task::{Context, Poll},
 };
 
+use ::io_uring::{cqueue, opcode, squeue, types};
 use futures::Future;
-use io_uring::{cqueue, opcode, squeue, types};
 
 use crate::{
-    context,
-    io_uring::{Completion, CompletionStatus},
+    io_uring::{self, Completion, CompletionStatus},
     net::{IoVec, MsgHdr, SocketAddrC},
-    ptr::SendMut,
     sync::OneShot,
 };
 
 struct SendToCompletion {
     fd: RawFd,
     addr: Option<Pin<Box<SocketAddrC>>>,
-    iovecs: Pin<Vec<IoVec>>,
+    buf: Vec<u8>,
+    iovec: Pin<Box<IoVec>>,
     hdr: Pin<Box<MsgHdr>>,
-    result: OneShot<io::Result<usize>>,
+    result: OneShot<io::Result<(usize, Vec<u8>)>>,
 }
 
 impl Completion for SendToCompletion {
-    fn resolve(&self, value: cqueue::Entry) -> CompletionStatus {
+    fn resolve(&mut self, value: cqueue::Entry) -> CompletionStatus {
+        let buf = std::mem::take(&mut self.buf);
+
         let result = value.result();
         let result = match result.cmp(&0) {
             Ordering::Less => Err(io::Error::from_raw_os_error(-result)),
-            Ordering::Equal | Ordering::Greater => Ok(result as usize),
+            Ordering::Equal | Ordering::Greater => Ok((result as usize, buf)),
         };
 
-        assert!(self.iovecs.len() > 0);
+        assert!(self.iovec.iov_len > 0);
         if let Some(addr) = &self.addr {
             assert!(addr.is_valid());
         }
@@ -54,12 +55,12 @@ impl Completion for SendToCompletion {
 pub struct SendTo<'a, T> {
     inner: PhantomData<&'a mut T>,
     id: usize,
-    result: OneShot<io::Result<usize>>,
+    result: OneShot<io::Result<(usize, Vec<u8>)>>,
 }
 
 impl<'a, T> Drop for SendTo<'a, T> {
     fn drop(&mut self) {
-        context::uring().deregister(self.id);
+        io_uring::uring().deregister(self.id);
     }
 }
 
@@ -67,18 +68,16 @@ impl<'a, T> SendTo<'a, T>
 where
     T: AsRawFd,
 {
-    pub(crate) fn new<'b>(
+    pub(crate) fn new(
         sock: &'a mut T,
-        buf: &'b mut [u8],
-        addr: Option<&SocketAddr>,
+        mut buf: Vec<u8>,
+        addr: Option<SocketAddr>,
     ) -> SendTo<'a, T> {
         let result = OneShot::new();
-        let buf_len = buf.len();
-        let buf = unsafe { SendMut::new(buf.as_mut_ptr() as _) };
 
         let (addr, addr_ptr, addr_len) = match addr {
             Some(addr) => {
-                let (addr, addr_len) = SocketAddrC::from_std(addr);
+                let (addr, addr_len) = SocketAddrC::from_std(&addr);
                 let mut addr = Box::pin(addr);
                 let addr_ptr = addr.as_mut_ptr();
                 (Some(addr), addr_ptr as _, addr_len)
@@ -86,18 +85,18 @@ where
             None => (None, ptr::null_mut(), 0),
         };
 
-        let iovecs = vec![IoVec {
-            iov_base: buf,
-            iov_len: buf_len,
-        }];
-        let mut iovecs = Pin::new(iovecs);
+        let iovec = IoVec {
+            iov_base: buf.as_mut_ptr() as _,
+            iov_len: buf.len(),
+        };
+        let mut iovec = Box::pin(iovec);
 
         let hdr = MsgHdr {
-            msg_name: unsafe { SendMut::new(addr_ptr as _) },
+            msg_name: addr_ptr,
             msg_namelen: addr_len,
-            msg_iov: unsafe { SendMut::new(iovecs.as_mut_ptr()) },
-            msg_iovlen: iovecs.len(),
-            msg_control: unsafe { SendMut::new(ptr::null_mut()) },
+            msg_iov: iovec.as_mut_ptr(),
+            msg_iovlen: 1,
+            msg_control: ptr::null_mut(),
             msg_controllen: 0,
             msg_flags: 0,
         };
@@ -106,11 +105,12 @@ where
         let op = SendToCompletion {
             fd: sock.as_raw_fd(),
             addr,
-            iovecs,
+            buf,
+            iovec,
             hdr,
             result: result.clone(),
         };
-        let id = context::uring().register(op);
+        let id = io_uring::uring().register(op);
 
         SendTo {
             inner: PhantomData,
@@ -128,7 +128,7 @@ impl<'a, T> Future for SendTo<'a, T>
 where
     T: AsRawFd,
 {
-    type Output = io::Result<usize>;
+    type Output = io::Result<(usize, Vec<u8>)>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.set_waker(cx);
         match self.result.take() {

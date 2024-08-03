@@ -1,14 +1,15 @@
 use std::{collections::VecDeque, io};
 
 use io_uring::{
-    squeue,
-    types::{SubmitArgs, Timespec},
+    opcode,
+    squeue::{self, Flags},
+    types::{CancelBuilder, SubmitArgs, Timespec},
     IoUring,
 };
 use nix::libc;
 use slab::Slab;
 
-use super::{cancel::Cancel, Completion, CompletionStatus};
+use super::{Completion, CompletionStatus};
 
 /// A IO Uring driver for registering and monitoring I/O events and integration in a low level
 /// aasync framework. This leverages an internal [io_uring::IoUring] to monitor and handle I/O
@@ -113,10 +114,11 @@ impl UringDriver {
             return;
         }
 
-        let mut op = Cancel::new(index);
-        let entry = op.as_entry();
-        let index = self.state.insert(Box::new(op));
-        self.enqueue(entry.user_data(index as _));
+        let cancel = CancelBuilder::user_data(index as u64).all();
+        let entry = opcode::AsyncCancel2::new(cancel)
+            .build()
+            .flags(Flags::SKIP_SUCCESS); // Nothing to do on success.
+        self.enqueue(entry);
     }
 
     /// Execute an iteration of the io_uring event loop, this will handle submitting any pending

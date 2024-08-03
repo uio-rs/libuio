@@ -11,13 +11,13 @@ use nix::{
 };
 
 #[repr(C)]
-pub(crate) union SocketAddrC {
+pub union SocketAddrC {
     v4: libc::sockaddr_in,
     v6: libc::sockaddr_in6,
 }
 
 impl SocketAddrC {
-    pub(crate) fn new() -> (SocketAddrC, libc::socklen_t) {
+    pub fn new() -> (SocketAddrC, libc::socklen_t) {
         let v6 = libc::sockaddr_in6 {
             sin6_family: 0,
             sin6_port: 0,
@@ -36,7 +36,7 @@ impl SocketAddrC {
         family == libc::AF_INET || family == libc::AF_INET6
     }
 
-    pub(crate) fn from_std(addr: &SocketAddr) -> (SocketAddrC, libc::socklen_t) {
+    pub fn from_std(addr: &SocketAddr) -> (SocketAddrC, libc::socklen_t) {
         match addr {
             SocketAddr::V4(ref v4) => {
                 let sin_addr = libc::in_addr {

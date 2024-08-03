@@ -9,7 +9,7 @@ use nix::sys::socket::{
     SockaddrStorage,
 };
 
-pub(super) fn listener_socket(addr: SocketAddr, outstanding: i32) -> io::Result<OwnedFd> {
+pub fn listener_socket(addr: SocketAddr, outstanding: i32) -> io::Result<OwnedFd> {
     let family = if addr.is_ipv4() {
         AddressFamily::Inet
     } else {
@@ -26,7 +26,7 @@ pub(super) fn listener_socket(addr: SocketAddr, outstanding: i32) -> io::Result<
     Ok(fd)
 }
 
-pub(super) fn client_socket(ipv4: bool) -> io::Result<OwnedFd> {
+pub fn client_socket(ipv4: bool) -> io::Result<OwnedFd> {
     let family = if ipv4 {
         AddressFamily::Inet
     } else {
@@ -36,7 +36,7 @@ pub(super) fn client_socket(ipv4: bool) -> io::Result<OwnedFd> {
     socket(family, SockType::Stream, SockFlag::empty(), None).map_err(io::Error::from)
 }
 
-pub(super) fn udp_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
+pub fn udp_socket(addr: SocketAddr) -> io::Result<OwnedFd> {
     let famil = if addr.is_ipv4() {
         AddressFamily::Inet
     } else {

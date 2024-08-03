@@ -58,7 +58,7 @@ pub enum CompletionStatus {
 /// }
 ///
 /// impl Completion for Cancel {
-///     fn resolve(&self, _: io_uring::cqueue::Entry) -> CompletionStatus {
+///     fn resolve(&mut self, _: io_uring::cqueue::Entry) -> CompletionStatus {
 ///         // We don't have anything to do, and we are a 'one shot' event so we need to return
 ///         // 'Finalized'
 ///         CompletionStatus::Finalized
@@ -112,7 +112,7 @@ pub trait Completion: Send {
     /// This method should never panic, any panic's here will cause the entire event loop to fail.
     /// So the only acceptable reason to panic is a completely irrcoverable error. There are few of
     /// these at this layer so be forewarned.
-    fn resolve(&self, value: cqueue::Entry) -> CompletionStatus;
+    fn resolve(&mut self, value: cqueue::Entry) -> CompletionStatus;
 
     /// Handle creating a [squeue::Entry] suitable for this completion, this is generally done via
     /// the [io_uring::opcode] module and creating whatever operation is needed. The caller, a

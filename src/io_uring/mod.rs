@@ -11,9 +11,12 @@
 //! [thread_local::ThreadLocal] types in the [crate::context] module. It is generally unneeded to
 //! create instances of a [UringDriver] directly.
 
-mod cancel;
 mod completion;
 mod engine;
+mod handle;
+mod statics;
 
 pub use completion::{Completion, CompletionStatus};
 pub use engine::UringDriver;
+pub use handle::Handle;
+pub use statics::{handle, uring};

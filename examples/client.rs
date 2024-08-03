@@ -19,13 +19,14 @@ async fn main() -> io::Result<()> {
     );
 
     // Send some data to the remote host.
-    client.send("Hello from client!".as_bytes()).await?;
+    client
+        .send("Hello from client!".as_bytes().to_vec())
+        .await?;
 
     // Now read back anything the server sent and then exit.
-    let mut buf = vec![0u8; 1024];
-    let read = client.recv(buf.as_mut_slice()).await?;
+    let buf = client.recv(Vec::with_capacity(1024)).await?;
 
-    let str = String::from_utf8_lossy(&buf[..read]);
+    let str = String::from_utf8_lossy(&buf);
     println!("Server response: {}", str);
     Ok(())
 }
